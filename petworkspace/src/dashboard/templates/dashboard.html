@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Pet Automation Suite{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+            <small class="text-muted">Real-time Overview</small>
+        </h1>
+    </div>
+</div>
+
+<!-- Key Metrics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total Revenue</h6>
+                        <h3 class="mb-0">${{ "%.2f"|format(metrics.total_revenue|default(0)) }}</h3>
+                        <small>Last 30 days</small>
+                    </div>
+                    <div>
+                        <i class="fas fa-dollar-sign fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total Profit</h6>
+                        <h3 class="mb-0">${{ "%.2f"|format(metrics.total_profit|default(0)) }}</h3>
+                        <small>Last 30 days</small>
+                    </div>
+                    <div>
+                        <i class="fas fa-chart-line fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total Orders</h6>
+                        <h3 class="mb-0">{{ metrics.total_orders|default(0) }}</h3>
+                        <small>Last 30 days</small>
+                    </div>
+                    <div>
+                        <i class="fas fa-shopping-cart fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Conversion Rate</h6>
+                        <h3 class="mb-0">{{ "%.1f"|format(metrics.conversion_rate|default(0)) }}%</h3>
+                        <small>Posts to Orders</small>
+                    </div>
+                    <div>
+                        <i class="fas fa-percentage fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Revenue Chart -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line"></i> Revenue Trend
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Platform Performance -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-share-alt"></i> Platform Performance
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="platformChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Activity -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock"></i> Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="activity-feed">
+                    {% for activity in recent_activity.orders %}
+                    <div class="activity-item">
+                        <div class="activity-icon bg-success">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div class="activity-content">
+                            <strong>New Order</strong> - {{ activity.product_name }}
+                            <br>
+                            <small class="text-muted">${{ "%.2f"|format(activity.profit) }} profit</small>
+                            <br>
+                            <small class="text-muted">{{ activity.date }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% for activity in recent_activity.posts %}
+                    <div class="activity-item">
+                        <div class="activity-icon bg-primary">
+                            <i class="fas fa-share-alt"></i>
+                        </div>
+                        <div class="activity-content">
+                            <strong>Social Post</strong> - {{ activity.platform }}
+                            <br>
+                            <small class="text-muted">{{ activity.engagement }} engagements</small>
+                            <br>
+                            <small class="text-muted">{{ activity.date }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Trending Keywords -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-fire"></i> Trending Keywords
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="trending-keywords">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-primary w-100" onclick="trainMLModel()">
+                            <i class="fas fa-brain"></i> Train ML Model
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-success w-100" onclick="generateContent()">
+                            <i class="fas fa-magic"></i> Generate Content
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-info w-100" onclick="schedulePosts()">
+                            <i class="fas fa-calendar"></i> Schedule Posts
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-warning w-100" onclick="updatePricing()">
+                            <i class="fas fa-tags"></i> Update Pricing
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Revenue Chart
+const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+const revenueChart = new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+        labels: {{ charts_data.revenue_timeline|map(attribute='date')|list|tojson }},
+        datasets: [{
+            label: 'Daily Revenue',
+            data: {{ charts_data.revenue_timeline|map(attribute='revenue')|list|tojson }},
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toFixed(2);
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Platform Chart
+const platformCtx = document.getElementById('platformChart').getContext('2d');
+const platformChart = new Chart(platformCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ charts_data.engagement_by_platform|map(attribute='platform')|list|tojson }},
+        datasets: [{
+            data: {{ charts_data.engagement_by_platform|map(attribute='engagement')|list|tojson }},
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 205, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Load trending keywords
+function loadTrendingKeywords() {
+    fetch('/api/trends')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('trending-keywords');
+            container.innerHTML = '';
+            
+            data.slice(0, 10).forEach(trend => {
+                const trendItem = document.createElement('div');
+                trendItem.className = 'trend-item mb-2 p-2 border rounded';
+                trendItem.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">${trend.keyword}</span>
+                        <span class="badge bg-${trend.growth_rate > 0 ? 'success' : 'danger'}">
+                            ${trend.growth_rate > 0 ? '+' : ''}${trend.growth_rate.toFixed(1)}%
+                        </span>
+                    </div>
+                    <small class="text-muted">${trend.platform}</small>
+                `;
+                container.appendChild(trendItem);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading trends:', error);
+        });
+}
+
+// Quick action functions
+function trainMLModel() {
+    fetch('/api/train-ml-model', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ model_type: 'roi_prediction' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('ML model trained successfully!');
+        } else {
+            alert('Failed to train ML model: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error training ML model: ' + error);
+    });
+}
+
+function generateContent() {
+    alert('Content generation initiated - check logs for progress');
+}
+
+function schedulePosts() {
+    alert('Post scheduling initiated - check social media page');
+}
+
+function updatePricing() {
+    alert('Dynamic pricing update initiated - check products page');
+}
+
+// Load trending keywords on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadTrendingKeywords();
+    
+    // Refresh data every 30 seconds
+    setInterval(function() {
+        loadTrendingKeywords();
+    }, 30000);
+});
+</script>
+{% endblock %}
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>

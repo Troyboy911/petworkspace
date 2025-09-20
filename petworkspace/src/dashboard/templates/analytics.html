@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - Pet Automation Suite{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-chart-line"></i> Analytics & Insights
+            <small class="text-muted">AI-powered business intelligence</small>
+        </h1>
+    </div>
+</div>
+
+<!-- ML Model Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-brain"></i> Machine Learning Models
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">ROI Prediction Model</h6>
+                                <div class="mb-2">
+                                    <i class="fas fa-chart-line fa-2x text-primary"></i>
+                                </div>
+                                <button class="btn btn-primary btn-sm" onclick="trainModel('roi_prediction')">
+                                    Train Model
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">Trend Forecasting</h6>
+                                <div class="mb-2">
+                                    <i class="fas fa-crystal-ball fa-2x text-success"></i>
+                                </div>
+                                <button class="btn btn-success btn-sm" onclick="trainModel('trend_forecasting')">
+                                    Train Model
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">Customer Segmentation</h6>
+                                <div class="mb-2">
+                                    <i class="fas fa-users fa-2x text-info"></i>
+                                </div>
+                                <button class="btn btn-info btn-sm" onclick="trainModel('customer_segmentation')">
+                                    Train Model
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Insights -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb"></i> AI-Powered Insights
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if ml_insights %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Revenue Trends</h6>
+                        <p class="{% if ml_insights.revenue_trends.trend == 'growing' %}text-success{% elif ml_insights.revenue_trends.trend == 'declining' %}text-danger{% else %}text-info{% endif %}">
+                            <strong>{{ ml_insights.revenue_trends.trend|capitalize }}</strong> 
+                            ({{ "%.1f"|format(ml_insights.revenue_trends.change_percent) }}% change)
+                        </p>
+                        
+                        <h6 class="mt-3">Top Performing Categories</h6>
+                        <ul class="list-unstyled">
+                            {% for product in ml_insights.top_performing_products %}
+                            <li>
+                                <i class="fas fa-star text-warning"></i> 
+                                {{ product.category }} - ${{ "%.2f"|format(product.total_revenue) }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Seasonal Patterns</h6>
+                        <p>Peak months: {{ ml_insights.seasonal_patterns.peak_months|join(', ') }}</p>
+                        <p>Low months: {{ ml_insights.seasonal_patterns.low_months|join(', ') }}</p>
+                        
+                        <h6 class="mt-3">Growth Opportunities</h6>
+                        <ul class="list-unstyled">
+                            {% for opportunity in ml_insights.growth_opportunities %}
+                            <li>
+                                <i class="fas fa-arrow-up text-success"></i> 
+                                {{ opportunity.category }}: {{ opportunity.opportunity }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center">
+                    <p class="text-muted">No insights available yet. Train ML models to generate insights.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analytics Charts -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-area"></i> Revenue Analytics
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueAnalyticsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie"></i> Platform Performance
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="platformAnalyticsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trend Forecasting -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-crystal-ball"></i> Trend Forecasting
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <canvas id="trendForecastChart"></canvas>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Next 7 Days Forecast</h6>
+                        <div id="trend-forecast-list">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Risk Analysis -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> Risk Analysis
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if ml_insights.risk_factors %}
+                <div class="row">
+                    {% for risk in ml_insights.risk_factors %}
+                    <div class="col-md-6 mb-3">
+                        <div class="alert alert-{{ 'danger' if risk.severity == 'high' else 'warning' }}">
+                            <h6><i class="fas fa-exclamation-triangle"></i> {{ risk.type|replace('_', ' ')|title }}</h6>
+                            <p>{{ risk.recommendation }}</p>
+                            {% if risk.impact %}
+                            <small>Impact: {{ "%.1f"|format(risk.impact) }}%</small>
+                            {% endif %}
+                            {% if risk.dependency_percent %}
+                            <small>Dependency: {{ "%.1f"|format(risk.dependency_percent) }}%</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center">
+                    <p class="text-muted">No significant risks detected.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Revenue Analytics Chart
+const revenueAnalyticsCtx = document.getElementById('revenueAnalyticsChart').getContext('2d');
+const revenueAnalyticsChart = new Chart(revenueAnalyticsCtx, {
+    type: 'line',
+    data: {
+        labels: {{ analytics_data.revenue_by_day|map(attribute='date')|list|tojson }},
+        datasets: [{
+            label: 'Daily Revenue',
+            data: {{ analytics_data.revenue_by_day|map(attribute='revenue')|list|tojson }},
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: true
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toFixed(2);
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Platform Analytics Chart
+const platformAnalyticsCtx = document.getElementById('platformAnalyticsChart').getContext('2d');
+const platformAnalyticsChart = new Chart(platformAnalyticsCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ analytics_data.platform_performance|map(attribute='platform')|list|tojson }},
+        datasets: [{
+            data: {{ analytics_data.platform_performance|map(attribute='total_value')|list|tojson }},
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 205, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Load trend forecasting data
+function loadTrendForecasting() {
+    fetch('/api/forecast-trends?days=7')
+        .then(response => response.json())
+        .then(data => {
+            updateTrendForecastChart(data);
+            updateTrendForecastList(data);
+        })
+        .catch(error => {
+            console.error('Error loading trend forecast:', error);
+        });
+}
+
+function updateTrendForecastChart(forecasts) {
+    const ctx = document.getElementById('trendForecastChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: forecasts.slice(0, 10).map(f => f.keyword),
+            datasets: [{
+                label: 'Predicted Score',
+                data: forecasts.slice(0, 10).map(f => f.predicted_score),
+                backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Current Score',
+                data: forecasts.slice(0, 10).map(f => f.current_score),
+                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function updateTrendForecastList(forecasts) {
+    const container = document.getElementById('trend-forecast-list');
+    container.innerHTML = '';
+    
+    forecasts.slice(0, 7).forEach(forecast => {
+        const trendItem = document.createElement('div');
+        trendItem.className = 'trend-forecast-item mb-2 p-2 border rounded';
+        
+        const direction = forecast.trend_direction === 'up' ? 'text-success' : 'text-danger';
+        const icon = forecast.trend_direction === 'up' ? 'fa-arrow-up' : 'fa-arrow-down';
+        
+        trendItem.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold">${forecast.keyword}</span>
+                <span class="${direction}">
+                    <i class="fas ${icon}"></i>
+                    ${forecast.predicted_score.toFixed(1)}
+                </span>
+            </div>
+            <small class="text-muted">
+                Confidence: ${(forecast.confidence * 100).toFixed(1)}%
+            </small>
+        `;
+        
+        container.appendChild(trendItem);
+    });
+}
+
+// ML Model training functions
+function trainModel(modelType) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Training...';
+    button.disabled = true;
+    
+    fetch('/api/train-ml-model', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ model_type: modelType })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`${modelType.replace('_', ' ').title()} model trained successfully!`);
+            location.reload();
+        } else {
+            alert(`Failed to train model: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        alert(`Error training model: ${error}`);
+    })
+    .finally(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+// Load trend forecasting on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadTrendForecasting();
+});
+</script>
+{% endblock %}
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>

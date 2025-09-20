@@ -1,0 +1,77 @@
+# Core Dependencies
+flask==3.0.0
+django==5.0.1
+requests==2.31.0
+beautifulsoup4==4.12.2
+selenium==4.16.0
+lxml==4.9.3
+pandas==2.1.4
+numpy==1.26.2
+scikit-learn==1.3.2
+sqlalchemy==2.0.23
+redis==5.0.1
+celery==5.3.4
+
+# AI/ML
+openai==1.6.1
+groq==0.4.1
+transformers==4.36.2
+torch==2.1.2
+nltk==3.8.1
+spacy==3.7.2
+
+# Social Media APIs
+tweepy==4.14.0
+praw==7.7.1
+instabot==0.117.0
+TikTokApi==6.2.0
+google-api-python-client==2.111.0
+
+# Affiliate & E-commerce
+shopifyapi==12.4.0
+amazon-pa-api==1.0.0
+clickbank-api==1.0.0
+aliexpress-api==1.0.0
+
+# Web Scraping & Proxies
+scrapy==2.11.0
+fake-useragent==1.4.0
+proxy-scraper==0.3.2
+anticaptchaofficial==1.0.46
+2captcha-python==1.1.3
+
+# Data Processing
+pymongo==4.6.1
+psycopg2-binary==2.9.9
+mysql-connector-python==8.2.0
+elasticsearch==8.11.1
+
+# Analytics & Monitoring
+google-analytics-data==0.18.2
+mixpanel==4.10.0
+sentry-sdk==1.39.2
+
+# Security & Stealth
+pyotp==2.9.0
+cryptography==41.0.8
+requests-random-user-agent==0.3.2
+cloudscraper==1.2.71
+
+# Scheduling & Automation
+apscheduler==3.10.4
+schedule==1.2.0
+python-crontab==3.0.0
+
+# Deployment & Containerization
+gunicorn==21.2.0
+docker==7.0.0
+kubernetes==28.1.0
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.2
+fastapi==0.105.0
+uvicorn==0.24.0
+pillow==10.1.0
+qrcode==7.4.2
+shortuuid==1.0.11
