@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: pet-postgres-local
+    environment:
+      POSTGRES_DB: petautomation
+      POSTGRES_USER: petuser
+      POSTGRES_PASSWORD: petpass123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U petuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: pet-redis-local
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_local:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB for Analytics
+  mongodb:
+    image: mongo:6
+    container_name: pet-mongodb-local
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data_local:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Flask Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pet-app-local
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - DEBUG=True
+      - DATABASE_URL=postgresql://petuser:petpass123@postgres:5432/petautomation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017/petautomation
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    command: python -m src.app
+    restart: unless-stopped
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pet-celery-worker-local
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://petuser:petpass123@postgres:5432/petautomation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017/petautomation
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      - postgres
+      - redis
+      - mongodb
+    command: celery -A src.tasks.celery_app worker --loglevel=info
+    restart: unless-stopped
+
+  # Celery Beat (Scheduler)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pet-celery-beat-local
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://petuser:petpass123@postgres:5432/petautomation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017/petautomation
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - mongodb
+    command: celery -A src.tasks.celery_app beat --loglevel=info
+    restart: unless-stopped
+
+volumes:
+  postgres_data_local:
+  redis_data_local:
+  mongodb_data_local:

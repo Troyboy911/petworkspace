@@ -1,0 +1,219 @@
+version: '3.8'
+
+services:
+  # Main web application
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@db:5432/pet_automation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongo:27017/pet_automation
+    depends_on:
+      - db
+      - redis
+      - mongo
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./models:/app/models
+    command: ["web"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery worker for background tasks
+  worker:
+    build: .
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@db:5432/pet_automation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongo:27017/pet_automation
+    depends_on:
+      - db
+      - redis
+      - mongo
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./models:/app/models
+    command: ["worker"]
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Celery scheduler for periodic tasks
+  scheduler:
+    build: .
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@db:5432/pet_automation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongo:27017/pet_automation
+    depends_on:
+      - db
+      - redis
+      - mongo
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    command: ["scheduler"]
+    restart: unless-stopped
+
+  # PostgreSQL database
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=pet_automation
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Redis for caching and task queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # MongoDB for analytics data
+  mongo:
+    image: mongo:6
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=pet_automation
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - web
+    restart: unless-stopped
+
+  # Scraper service
+  scraper:
+    build: .
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@db:5432/pet_automation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongo:27017/pet_automation
+    depends_on:
+      - db
+      - redis
+      - mongo
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./config/proxies:/app/config/proxies
+    command: ["scraper"]
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Social media service
+  social:
+    build: .
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@db:5432/pet_automation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongo:27017/pet_automation
+    depends_on:
+      - db
+      - redis
+      - mongo
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    command: ["social"]
+    restart: unless-stopped
+
+  # Affiliate service
+  affiliate:
+    build: .
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@db:5432/pet_automation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongo:27017/pet_automation
+    depends_on:
+      - db
+      - redis
+      - mongo
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    command: ["affiliate"]
+    restart: unless-stopped
+
+  # Dropshipping service
+  dropshipping:
+    build: .
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@db:5432/pet_automation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongo:27017/pet_automation
+    depends_on:
+      - db
+      - redis
+      - mongo
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    command: ["dropshipping"]
+    restart: unless-stopped
+
+  # ML service
+  ml:
+    build: .
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@db:5432/pet_automation
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongo:27017/pet_automation
+    depends_on:
+      - db
+      - redis
+      - mongo
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./models:/app/models
+    command: ["ml"]
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  mongo_data:
+
+networks:
+  default:
+    driver: bridge

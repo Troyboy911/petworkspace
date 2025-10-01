@@ -1,0 +1,136 @@
+name: Deploy to Hostinger VPS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Hostinger
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: 89.116.159.31
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            # Set deployment path
+            DEPLOY_PATH="/var/www/pet-automation"
+            
+            # Create deployment directory if it doesn't exist
+            mkdir -p $DEPLOY_PATH
+            cd $DEPLOY_PATH
+            
+            # Backup current deployment
+            if [ -d "pet-automation-suite" ]; then
+              echo "📦 Creating backup..."
+              tar -czf backup-$(date +%Y%m%d-%H%M%S).tar.gz pet-automation-suite 2>/dev/null || true
+              ls -t backup-*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm || true
+            fi
+            
+            # Clone or pull latest code
+            if [ -d "pet-automation-suite/.git" ]; then
+              echo "🔄 Pulling latest changes..."
+              cd pet-automation-suite
+              git pull origin main
+            else
+              echo "📥 Cloning repository..."
+              git clone https://github.com/Troyboy911/petworkspace.git pet-automation-suite
+              cd pet-automation-suite
+            fi
+            
+            # Create .env if it doesn't exist
+            if [ ! -f .env ]; then
+              echo "📝 Creating .env file..."
+              cp .env.example .env
+              echo "⚠️  Please configure .env with your API keys"
+            fi
+            
+            # Install Docker if not present
+            if ! command -v docker &> /dev/null; then
+              echo "🐳 Installing Docker..."
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sh get-docker.sh
+              systemctl start docker
+              systemctl enable docker
+            fi
+            
+            # Install Docker Compose if not present
+            if ! command -v docker-compose &> /dev/null; then
+              echo "🐳 Installing Docker Compose..."
+              curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              chmod +x /usr/local/bin/docker-compose
+            fi
+            
+            # Stop existing containers
+            echo "🛑 Stopping existing containers..."
+            docker-compose down 2>/dev/null || true
+            
+            # Pull latest images
+            echo "📦 Pulling latest Docker images..."
+            docker-compose pull 2>/dev/null || true
+            
+            # Start services
+            echo "🚀 Starting services..."
+            docker-compose up -d --build
+            
+            # Wait for services to be healthy
+            echo "⏳ Waiting for services to start..."
+            sleep 30
+            
+            # Health check
+            echo "🏥 Running health check..."
+            for i in {1..10}; do
+              if curl -f http://localhost:5000/health 2>/dev/null; then
+                echo "✅ Health check passed!"
+                break
+              fi
+              echo "Waiting for app to be ready... (attempt $i/10)"
+              sleep 5
+            done
+            
+            # Show running containers
+            echo "📊 Running containers:"
+            docker-compose ps
+            
+            # Clean up old images
+            echo "🧹 Cleaning up old Docker images..."
+            docker image prune -af --filter "until=24h" 2>/dev/null || true
+            
+            echo "✅ Deployment completed successfully!"
+            echo "🌐 Dashboard: http://89.116.159.31:5000"
+      
+      - name: Verify Deployment
+        run: |
+          echo "🔍 Verifying deployment..."
+          sleep 10
+          for i in {1..5}; do
+            if curl -f http://89.116.159.31:5000/health 2>/dev/null; then
+              echo "✅ Deployment verified successfully!"
+              exit 0
+            fi
+            echo "Waiting for verification... (attempt $i/5)"
+            sleep 10
+          done
+          echo "⚠️ Could not verify deployment, but it may still be starting"
+          echo "Check manually at: http://89.116.159.31:5000"
+      
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "================================"
+          echo "📊 Deployment Summary"
+          echo "================================"
+          echo "Status: ${{ job.status }}"
+          echo "Dashboard: http://89.116.159.31:5000"
+          echo "Health: http://89.116.159.31:5000/health"
+          echo "Logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "================================"

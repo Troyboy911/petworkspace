@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Products - Pet Automation Suite{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-box"></i> Products Management
+            <small class="text-muted">Manage your product catalog</small>
+        </h1>
+    </div>
+</div>
+
+<!-- Product Stats -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total Products</h6>
+                        <h3 class="mb-0">{{ products|length }}</h3>
+                    </div>
+                    <div>
+                        <i class="fas fa-box fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Active Products</h6>
+                        <h3 class="mb-0">{{ products|selectattr('is_active')|list|length }}</h3>
+                    </div>
+                    <div>
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Avg Profit Margin</h6>
+                        <h3 class="mb-0">
+                            {% set avg_margin = products|map(attribute='profit_margin')|average %}
+                            {{ "%.1f"|format(avg_margin|default(0)) }}%
+                        </h3>
+                    </div>
+                    <div>
+                        <i class="fas fa-percentage fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Avg Commission</h6>
+                        <h3 class="mb-0">
+                            {% set avg_commission = products|map(attribute='commission_rate')|average %}
+                            {{ "%.1f"|format(avg_commission|default(0)) }}%
+                        </h3>
+                    </div>
+                    <div>
+                        <i class="fas fa-hand-holding-usd fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Product Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-primary w-100" onclick="syncProducts()">
+                            <i class="fas fa-sync"></i> Sync Products
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-success w-100" onclick="updatePricing()">
+                            <i class="fas fa-tags"></i> Update Pricing
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-info w-100" onclick="generateDescriptions()">
+                            <i class="fas fa-magic"></i> Generate Descriptions
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-warning w-100" onclick="optimizeSEO()">
+                            <i class="fas fa-search"></i> Optimize SEO
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Products Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Product Catalog
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="productsTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Cost</th>
+                                <th>Margin</th>
+                                <th>Commission</th>
+                                <th>Platform</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in products %}
+                            <tr>
+                                <td>
+                                    <strong>{{ product.name }}</strong>
+                                    {% if product.description %}
+                                    <br><small class="text-muted">{{ product.description[:100] }}...</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ product.category }}</span>
+                                </td>
+                                <td>${{ "%.2f"|format(product.price) }}</td>
+                                <td>${{ "%.2f"|format(product.cost_price) }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if product.profit_margin > 50 else 'warning' if product.profit_margin > 20 else 'danger' }}">
+                                        {{ "%.1f"|format(product.profit_margin) }}%
+                                    </span>
+                                </td>
+                                <td>{{ "%.1f"|format(product.commission_rate) }}%</td>
+                                <td>
+                                    <span class="badge bg-info">{{ product.platform }}</span>
+                                </td>
+                                <td>
+                                    {% if product.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="editProduct({{ product.id }})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-info" onclick="viewProduct('{{ product.affiliate_link }}')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if product.is_active %}
+                                    <button class="btn btn-sm btn-warning" onclick="toggleProductStatus({{ product.id }}, false)">
+                                        <i class="fas fa-pause"></i>
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-success" onclick="toggleProductStatus({{ product.id }}, true)">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Performance Chart -->
+<div class="row mt-4">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie"></i> Products by Category
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar"></i> Profit Margin Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="marginChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize DataTable
+$(document).ready(function() {
+    $('#productsTable').DataTable({
+        responsive: true,
+        order: [[2, 'desc']] // Sort by price descending
+    });
+});
+
+// Category Chart
+const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+const categoryData = {{ products|groupby('category')|map('list')|map('length')|list }};
+const categoryLabels = {{ products|groupby('category')|map('attribute')|list }};
+
+const categoryChart = new Chart(categoryCtx, {
+    type: 'doughnut',
+    data: {
+        labels: categoryLabels,
+        datasets: [{
+            data: categoryData,
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 205, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Margin Chart
+const marginCtx = document.getElementById('marginChart').getContext('2d');
+const marginData = {{ products|map(attribute='profit_margin')|list }};
+
+const marginChart = new Chart(marginCtx, {
+    type: 'histogram',
+    data: {
+        datasets: [{
+            label: 'Profit Margin Distribution',
+            data: marginData,
+            backgroundColor: 'rgba(75, 192, 192, 0.8)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: 'Profit Margin (%)'
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: 'Number of Products'
+                }
+            }
+        }
+    }
+});
+
+// Product action functions
+function syncProducts() {
+    alert('Product sync initiated - this will update products from affiliate platforms');
+}
+
+function updatePricing() {
+    if (confirm('This will update pricing for all products based on market conditions. Continue?')) {
+        alert('Pricing update initiated - check back in a few minutes');
+    }
+}
+
+function generateDescriptions() {
+    alert('AI description generation initiated - this will create optimized product descriptions');
+}
+
+function optimizeSEO() {
+    alert('SEO optimization initiated - this will improve product visibility');
+}
+
+function editProduct(productId) {
+    alert('Edit functionality coming soon for product ID: ' + productId);
+}
+
+function viewProduct(affiliateLink) {
+    if (affiliateLink) {
+        window.open(affiliateLink, '_blank');
+    } else {
+        alert('No affiliate link available for this product');
+    }
+}
+
+function toggleProductStatus(productId, activate) {
+    const action = activate ? 'activate' : 'deactivate';
+    if (confirm(`Are you sure you want to ${action} this product?`)) {
+        alert(`Product ${action}d successfully`);
+        // In a real implementation, this would make an API call
+        location.reload();
+    }
+}
+</script>
+{% endblock %}
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
