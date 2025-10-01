@@ -4,6 +4,11 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      host:
+        description: 'Coolify server IP/hostname'
+        required: true
+        default: 'your-coolify-server.com'
 
 jobs:
   deploy:
@@ -17,7 +22,7 @@ jobs:
       - name: Deploy to Coolify Server
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.COOLIFY_HOST }}
+          host: ${{ github.event.inputs.host || secrets.COOLIFY_HOST }}
           username: root
           key: ${{ secrets.COOLIFY_SSH_KEY }}
           port: 22
